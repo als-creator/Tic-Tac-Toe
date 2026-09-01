@@ -18,6 +18,7 @@
 ## 🚀 Установка и запуск (Локально)
 
 1. **Клонируйте репозиторий к себе на компьютер:**
+
    ```bash
    git clone git@github.com:als-creator/Tic-Tac-Toe.git
    cd Tic-Tac-Toe
@@ -28,19 +29,29 @@
    uv run main.py
    ```
 
-## 🐳 Мгновенный запуск через Docker (GitHub Packages)
+## Команда запуска для графических окружений Linux:
 
-Вы можете запустить игру одной командой на Linux без скачивания исходного кода и настройки окружения. Готовый скомпилированный образ автоматически загрузится из реестра GitHub.
+### 🐳 Мгновенный запуск через Docker (GitHub Packages)
 
-### Команда запуска для графических окружений Linux (в оболочке Fish):
+Вы можете запустить игру одной командой без скачивания исходного кода и настройки окружения. Готовый скомпилированный образ автоматически загрузится из реестра GitHub.
+
+Команда работает в любой оболочке (Bash, Zsh, Fish):
+
 ```bash
 docker run -it --rm \
   --net=host \
   -e DISPLAY=\$DISPLAY \
   -e XAUTHORITY=/root/.Xauthority \
   -v /tmp/.X11-unix:/tmp/.X11-unix \
-  -v (if test -n "\$XAUTHORITY"; echo XAUTHORITY; else echo HOME/.Xauthority; end):/root/.Xauthority \
+  -v \$HOME/.Xauthority:/root/.Xauthority \
   ghcr.io/als-creator/tic-tac-toe:latest
+```
+
+### Удалить образ если больше не нужен:
+
+```bash
+docker rmi -f ghcr.io/als-creator/tic-tac-toe:latest
+
 ```
 
 ## 🎨 Скриншоты
@@ -49,4 +60,4 @@ docker run -it --rm \
 
 ## 📝 Лицензия
 
-Проект распространяется под лицензией GPL-3.0. 
+Проект распространяется под лицензией GPL-3.0.

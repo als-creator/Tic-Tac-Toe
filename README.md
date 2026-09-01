@@ -1,4 +1,4 @@
-# ❌ Крестики-Нолики (Dark Mode) ⭕
+# Крестики-Нолики
 
 Стильная, адаптивная и кроссплатформенная десктопная игра **Крестики-Нолики** (Tic-Tac-Toe), написанная на Python с использованием библиотеки `Tkinter` и современного менеджера пакетов `uv`.
 
@@ -18,10 +18,9 @@
 ## 🚀 Установка и запуск (Локально)
 
 1. **Клонируйте репозиторий к себе на компьютер:**
-
    ```bash
-   git clone https://github.com
-   cd tic-tac-toe
+   git clone git@github.com:als-creator/Tic-Tac-Toe.git
+   cd Tic-Tac-Toe
    ```
 
 2. **Запустите игру одной командой с помощью `uv`:**
@@ -31,13 +30,21 @@
 
 ## 🐳 Мгновенный запуск через Docker (GitHub Packages)
 
-Вы можете запустить игру одной командой на Linux без скачивания исходного кода и настройки окружения. Готовый скомпилированный образ автоматически загрузится из реестра GitHub:
+Вы можете запустить игру одной командой без скачивания исходного кода и настройки окружения. Готовый скомпилированный образ автоматически загрузится из реестра GitHub.
 
+### Вариант 1. Для современных систем Linux (Wayland / оболочка Fish)
 ```bash
-# 1. Разрешаем локальным Docker-контейнерам доступ к вашему экрану
-xhost +local:docker
+docker run -it --rm \
+  -e XDG_RUNTIME_DIR=\$XDG_RUNTIME_DIR \
+  -e WAYLAND_DISPLAY=\$WAYLAND_DISPLAY \
+  -v \(XDG_RUNTIME_DIR/\)WAYLAND_DISPLAY:\(XDG_RUNTIME_DIR/\)WAYLAND_DISPLAY \
+  --user (id -u):(id -g) \
+  ghcr.io/als-creator/tic-tac-toe:latest
+```
 
-# 2. Скачиваем образ и запускаем графическое окно игры
+### Вариант 2. Для классических X11 систем
+```bash
+xhost +local:docker
 docker run -it --rm \
   -e DISPLAY=\$DISPLAY \
   -v /tmp/.X11-unix:/tmp/.X11-unix \
@@ -49,3 +56,5 @@ docker run -it --rm \
 ![Игровой процесс](screen.jpg)
 
 ## 📝 Лицензия
+
+Проект распространяется под лицензией GPL-3.0. 

@@ -9,9 +9,9 @@ RUN apt-get update && apt-get install -y \
 # Создаем рабочую папку в контейнере
 WORKDIR /app
 
-# Копируем файлы проекта
+# Копируем файлы проекта (теперь копируем icon.ico вместо icon.png)
 COPY main.py .
-COPY icon.png .
+COPY icon.ico .
 
 # Команда для запуска приложения внутри контейнера
 CMD ["python", "main.py"]

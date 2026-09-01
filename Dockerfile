@@ -15,4 +15,4 @@ COPY icon.png .
 
 # Команда для запуска приложения внутри контейнера
 CMD ["python", "main.py"]
-LABEL org.opencontainers.image.source="https://github.com"
+LABEL org.opencontainers.image.source="https://github.com/als-creator/Tic-Tac-Toe"

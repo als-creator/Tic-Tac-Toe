@@ -27,7 +27,8 @@ jobs:
         run: |
           pyinstaller --noconfirm --onefile --windowed --add-data "icon.ico;." --icon "icon.ico" main.py
 
-      - name: Rename Artifact
+      - name: Rename Artifact (Windows-friendly)
+        shell: bash # Явно заставляем шаг использовать bash, чтобы команда mv сработала на Windows
         run: |
           mv dist/main.exe ./tic-tac-toe-windows.exe
 

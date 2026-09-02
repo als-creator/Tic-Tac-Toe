@@ -21,7 +21,7 @@ jobs:
       - name: Install PyInstaller and Pillow
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller pillow  # Добавили pillow для автоконвертации иконок
+          pip install pyinstaller pillow
 
       - name: Build EXE with PyInstaller
         run: |
@@ -58,7 +58,7 @@ jobs:
       - name: Install PyInstaller and Pillow
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller pillow  # Также добавили pillow для стабильности на Linux
+          pip install pyinstaller pillow
 
       - name: Build Binary with PyInstaller
         run: |
@@ -93,7 +93,7 @@ jobs:
           name: linux-artifact
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-releases@v2
+        uses: softprops/action-gh-release@v2  # ОПЕЧАТКА ИСПРАВЛЕНА (БЫЛО action-gh-releases)
         with:
           files: |
             tic-tac-toe-windows.exe

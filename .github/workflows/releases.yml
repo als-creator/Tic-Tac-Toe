@@ -3,7 +3,7 @@ name: Build and Publish Desktop Releases
 on:
   push:
     tags:
-      - "v*"
+      - 'v*'
 
 jobs:
   # ====== СБОРКА WINDOWS EXE ======
@@ -16,19 +16,19 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5.3.0
         with:
-          python-version: "3.12"
+          python-version: '3.12'
 
-      - name: Install PyInstaller
+      - name: Install PyInstaller and Pillow
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller
+          pip install pyinstaller pillow  # Добавили pillow для автоконвертации иконок
 
       - name: Build EXE with PyInstaller
         run: |
           pyinstaller --noconfirm --onefile --windowed --add-data "icon.ico;." --icon "icon.ico" main.py
 
       - name: Rename Artifact (Windows-friendly)
-        shell: bash # Явно заставляем шаг использовать bash, чтобы команда mv сработала на Windows
+        shell: bash
         run: |
           mv dist/main.exe ./tic-tac-toe-windows.exe
 
@@ -48,17 +48,17 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5.3.0
         with:
-          python-version: "3.12"
+          python-version: '3.12'
 
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y python3-tk libx11-6 binutils
 
-      - name: Install PyInstaller
+      - name: Install PyInstaller and Pillow
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller
+          pip install pyinstaller pillow  # Также добавили pillow для стабильности на Linux
 
       - name: Build Binary with PyInstaller
         run: |

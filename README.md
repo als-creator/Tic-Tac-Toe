@@ -37,10 +37,10 @@
 ```bash
 docker run -it --rm \
   --net=host \
-  -e DISPLAY=\$DISPLAY \
-  -e XAUTHORITY=/root/.Xauthority \
+  -e DISPLAY=$DISPLAY \
+  -e XAUTHORITY=$XAUTHORITY \
   -v /tmp/.X11-unix:/tmp/.X11-unix \
-  -v \$HOME/.Xauthority:/root/.Xauthority \
+  -v $XAUTHORITY:$XAUTHORITY \
   ghcr.io/als-creator/tic-tac-toe:latest
 ```
 

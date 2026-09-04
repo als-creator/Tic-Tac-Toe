@@ -1,4 +1,5 @@
 import os
+import sys
 import tkinter as tk
 from tkinter import messagebox
 
@@ -21,11 +22,30 @@ COLOR_WIN = "#a6e3a1"
 root.configure(bg=DARK_BG)
 
 # ===== ИКОНКА =====
-current_dir = os.path.dirname(os.path.abspath(__file__))
-icon_path = os.path.join(current_dir, "icon.ico")
-if os.path.exists(icon_path):
-    img = tk.PhotoImage(file=icon_path)
-    root.iconphoto(False, img)
+def resource_path(relative):
+    """Путь к ресурсу с учётом распаковки PyInstaller onefile (_MEIPASS)."""
+    base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base, relative)
+
+png_path = resource_path("icon.png")
+ico_path = resource_path("icon.ico")
+
+_window_icon = None  # держим ссылку, чтобы не собрал garbage collector
+
+# Windows: иконка окна и панели задач корректно ставится через ICO (iconbitmap).
+# Linux/macOS: iconphoto с PNG (PhotoImage не умеет читать ICO).
+if sys.platform == "win32" and os.path.exists(ico_path):
+    try:
+        root.iconbitmap(default=ico_path)
+    except tk.TclError:
+        pass
+
+if os.path.exists(png_path):
+    try:
+        _window_icon = tk.PhotoImage(file=png_path)
+        root.iconphoto(True, _window_icon)  # True = распространять на все окна
+    except tk.TclError:
+        pass
 
 # ===== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ =====
 current_player = "X"

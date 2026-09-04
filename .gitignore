@@ -8,3 +8,8 @@ wheels/
 
 # Virtual environments
 .venv
+
+# PyInstaller / сборки
+*.spec
+*.AppImage
+*.exe

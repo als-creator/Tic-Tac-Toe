@@ -158,9 +158,76 @@ jobs:
           path: tic-tac-toe-linux-*.AppImage
           if-no-files-found: error
 
+  # ====== СБОРКА MACOS .dmg (Intel x86_64 + Apple Silicon arm64) ======
+  build-macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14    # Apple Silicon (arm64)
+            arch: arm64
+          - os: macos-13    # Intel (x86_64)
+            arch: x86_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4.1.7
+
+      - name: Set up Python
+        uses: actions/setup-python@v5.3.0
+        with:
+          python-version: '3.12'
+
+      - name: Compute version from tag
+        id: ver
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Install PyInstaller
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+
+      - name: Convert icon.png -> icon.icns
+        run: |
+          mkdir -p icon.iconset
+          for s in 16 32 128 256 512; do
+            sips -z $s $s "${{ env.ICON_PNG }}" --out "icon.iconset/icon_${s}x${s}.png"
+            d=$((s*2))
+            sips -z $d $d "${{ env.ICON_PNG }}" --out "icon.iconset/icon_${s}x${s}@2x.png"
+          done
+          iconutil -c icns icon.iconset -o icon.icns
+          ls -la icon.icns
+
+      - name: Build .app bundle with PyInstaller (onedir)
+        run: |
+          pyinstaller --noconfirm --windowed --onedir \
+            --icon icon.icns \
+            --add-data "${{ env.ICON_PNG }}:." \
+            --name "Tic-Tac-Toe" main.py
+          ls -la dist/Tic-Tac-Toe.app/Contents/MacOS/
+
+      - name: Ad-hoc codesign (local run, no notarization)
+        run: |
+          codesign --force --deep --sign - "dist/Tic-Tac-Toe.app"
+          codesign --verify --deep --strict "dist/Tic-Tac-Toe.app" && echo "codesign OK"
+
+      - name: Create .dmg image
+        run: |
+          DMG="tic-tac-toe-macos-${{ matrix.arch }}-${{ steps.ver.outputs.version }}.dmg"
+          hdiutil create -volname "Tic-Tac-Toe" -srcfolder "dist/Tic-Tac-Toe.app" \
+            -ov -format UDZO "./$DMG"
+          ls -la "$DMG"
+
+      - name: Upload macOS DMG Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}-artifact
+          path: tic-tac-toe-macos-${{ matrix.arch }}-*.dmg
+          if-no-files-found: error
+
   # ====== ПУБЛИКАЦИЯ РЕЛИЗА НА GITHUB ======
   publish-release:
-    needs: [build-windows, build-linux]
+    needs: [build-windows, build-linux, build-macos]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -175,11 +242,22 @@ jobs:
         with:
           name: linux-appimage
 
+      - name: Download macOS Artifact (arm64)
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-arm64-artifact
+
+      - name: Download macOS Artifact (x86_64)
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-x86_64-artifact
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             tic-tac-toe-windows-*.exe
             tic-tac-toe-linux-*.AppImage
+            tic-tac-toe-macos-*.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

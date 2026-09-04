@@ -56,6 +56,7 @@ docker rmi -f ghcr.io/als-creator/tic-tac-toe:latest
 
 - **Windows** — один исполняемый файл (Nuitka, native-компиляция): `tic-tac-toe-windows-<версия>.exe`
 - **Linux** — **AppImage**: `tic-tac-toe-linux-<версия>.AppImage`
+- **macOS** — **`.dmg`** для двух архитектур: `tic-tac-toe-macos-arm64-<версия>.dmg` (Apple Silicon) и `tic-tac-toe-macos-x86_64-<версия>.dmg` (Intel)
 
 Windows (просто запустите скачанный exe):
 
@@ -71,6 +72,10 @@ AppImage запускается на любом дистрибутиве без 
 chmod +x tic-tac-toe-linux-*.AppImage
 ./tic-tac-toe-linux-*.AppImage
 ```
+
+macOS: скачайте `.dmg` под свою архитектуру, откройте и перетащите **Tic-Tac-Toe.app** в папку «Программы».
+
+> **macOS Gatekeeper:** сборка подписана *ad-hoc* без нотаризации, поэтому при первом запуске из скачанного `.dmg` macOS может отказать («не удалось проверить разработчика»). Решение: **ПКМ → Открыть → Открыть**, либо `xattr -cr /Applications/Tic-Tac-Toe.app`. Полноценная нотаризация требует платной учётки Apple Developer ($99/год).
 
 ## 🎨 Скриншоты
 

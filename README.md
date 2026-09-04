@@ -54,17 +54,16 @@ docker rmi -f ghcr.io/als-creator/tic-tac-toe:latest
 
 При создании тега (`git tag vX.Y.Z && git push --tags`) GitHub Actions автоматически соберёт и опубликует в разделе **Releases**:
 
-- **Windows** — архив `zip` с папкой приложения (PyInstaller, `--onedir`): `tic-tac-toe-windows-<версия>.zip`
+- **Windows** — один исполняемый файл (Nuitka, native-компиляция): `tic-tac-toe-windows-<версия>.exe`
 - **Linux** — **AppImage**: `tic-tac-toe-linux-<версия>.AppImage`
 
-Windows (распакуйте архив и запустите `tic-tac-toe.exe`):
+Windows (просто запустите скачанный exe):
 
 ```powershell
-Expand-Archive tic-tac-toe-windows-<версия>.zip
-tic-tac-toe-windows-<версия>\tic-tac-toe.exe
+./tic-tac-toe-windows-<версия>.exe
 ```
 
-> **Windows Defender:** сборка идёт в режиме `--onedir` без UPX-сжатия и с корректными метаданными версии — это убирает ложное срабатывание эвристики `Win32/Sabsik.FL!ml`, которое встречается у свистков `onefile`. Если защитник всё же спросит — разрешите запуск/добавьте в исключения.
+> **Windows Defender:** сборка делается через **Nuitka** (нативная компиляция Python в C). В отличие от PyInstaller, результирующий exe — обычный нативный бинарь без self-extracting bootloader'а и UPX-паттернов, поэтому эвристика `Win32/Sabsik.FL!ml` на него, как правило, не срабатывает. Если защитник всё же что-то спросит — нажмите «Подробнее → Выполнить в любом случае».
 
 AppImage запускается на любом дистрибутиве без установки зависимостей:
 

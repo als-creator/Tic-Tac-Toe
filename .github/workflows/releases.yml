@@ -27,61 +27,35 @@ jobs:
         shell: bash
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
 
-      - name: Install PyInstaller
+      - name: Install C compiler (MinGW) and Nuitka
         run: |
+          choco install mingw -y --no-progress
           python -m pip install --upgrade pip
-          pip install pyinstaller
+          pip install nuitka
 
-      - name: Generate version-file with real metadata
-        shell: python
-        run: |
-          import os, pathlib, subprocess
-          tag = os.environ["GITHUB_REF"].replace("refs/tags/v", "")
-          parts = tag.split(".")
-          while len(parts) < 4:
-              parts.append("0")
-          parts = ", ".join(parts)
-          txt = f"""VSVersionInfo(
-            ffi=FixedFileInfo(
-              filevers=({parts}),
-              prodvers=({parts}),
-              mask=0x3f, flags=0x0, OS=0x40004, fileType=0x1, subtype=0x0,
-              date=(0, 0)
-            ),
-            kids=[StringFileInfo([StringTable('040904B0', [
-              StringStruct('CompanyName', 'Tic-Tac-Toe'),
-              StringStruct('FileDescription', 'KRESTIKI-NOLIKI game (Python/Tk)'),
-              StringStruct('FileVersion', '{tag}'),
-              StringStruct('ProductName', 'Tic-Tac-Toe'),
-              StringStruct('ProductVersion', '{tag}')
-            ])]), VarFileInfo([VarStruct('Translation', [1033, 1200])])]
-          )
-          """
-          pathlib.Path("version_info.txt").write_text(txt, encoding="utf-8")
-          print("version_info.txt written for", tag)
-
-      - name: Build Windows directory with PyInstaller (onedir + noupx)
+      - name: Build single EXE with Nuitka (native compile)
         shell: bash
         run: |
-          pyinstaller --noconfirm --onedir --windowed --noupx \
-            --icon "${{ env.ICON_ICO }}" \
-            --add-data "${{ env.ICON_PNG }};." \
-            --add-data "${{ env.ICON_ICO }};." \
-            --version-file version_info.txt \
-            --name "tic-tac-toe" main.py
+          python -m nuitka --standalone --onefile --mingw64 \
+            --assume-yes-for-downloads \
+            --enable-plugin=tk-inter \
+            --windows-console-mode=disable \
+            --windows-icon-from-ico="${{ env.ICON_ICO }}" \
+            --include-data-file="${{ env.ICON_PNG }}=icon.png" \
+            --windows-company-name="Tic-Tac-Toe" \
+            --windows-product-name="Tic-Tac-Toe" \
+            --windows-file-description="Крестики-нолики - игра на Python/Tk (Nuitka)" \
+            --windows-product-version=${{ steps.ver.outputs.version }} \
+            --windows-file-version=${{ steps.ver.outputs.version }} \
+            --output-filename="tic-tac-toe-windows-${{ steps.ver.outputs.version }}.exe" \
+            --output-dir="dist-windows" \
+            main.py
 
-      - name: Package as ZIP archive
-        shell: bash
-        run: |
-          cd dist
-          python -m zipfile -c "tic-tac-toe-windows-${{ steps.ver.outputs.version }}.zip" tic-tac-toe
-          mv "tic-tac-toe-windows-${{ steps.ver.outputs.version }}.zip" ..
-
-      - name: Upload Windows Artifact
+      - name: Upload Windows EXE Artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-artifact
-          path: tic-tac-toe-windows-*.zip
+          path: dist-windows/tic-tac-toe-windows-*.exe
           if-no-files-found: error
 
   # ====== СБОРКА LINUX APPIMAGE (PyInstaller + linuxdeploy) ======
@@ -205,7 +179,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            tic-tac-toe-windows-*.zip
+            tic-tac-toe-windows-*.exe
             tic-tac-toe-linux-*.AppImage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

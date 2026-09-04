@@ -130,7 +130,7 @@ jobs:
       - name: Download linuxdeploy
         run: |
           wget -q -O /tmp/linuxdeploy \
-            https://github.com/linuxdeploy/linuxdeploy/releases/download/1.0.0-20250117165418-1df4e00b/linuxdeploy-x86_64.AppImage
+            https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20251107-1/linuxdeploy-x86_64.AppImage
           chmod +x /tmp/linuxdeploy
 
       - name: Generate AppImage with linuxdeploy

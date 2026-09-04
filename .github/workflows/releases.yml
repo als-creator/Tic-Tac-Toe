@@ -40,7 +40,7 @@ jobs:
           parts = tag.split(".")
           while len(parts) < 4:
               parts.append("0")
-          parts = " ".join(parts)
+          parts = ", ".join(parts)
           txt = f"""VSVersionInfo(
             ffi=FixedFileInfo(
               filevers=({parts}),

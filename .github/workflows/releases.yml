@@ -158,17 +158,11 @@ jobs:
           path: tic-tac-toe-linux-*.AppImage
           if-no-files-found: error
 
-  # ====== СБОРКА MACOS .dmg (Intel x86_64 + Apple Silicon arm64) ======
+  # ====== СБОРКА MACOS .dmg — Universal2 (arm64 + x86_64) ======
+  # Один раннер macos-14 (arm64), Python также universal2, поэтому
+  # PyInstaller собирает единый .app на обе архитектуры (lipo -thin).
   build-macos:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: macos-14    # Apple Silicon (arm64)
-            arch: arm64
-          - os: macos-13    # Intel (x86_64)
-            arch: x86_64
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-14
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4.1.7
@@ -182,10 +176,17 @@ jobs:
         id: ver
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
 
+      - name: Check Python is universal2
+        run: |
+          PY="$(python3 -c 'import sys;print(sys.executable)')"
+          echo "PYTHON: $PY"
+          file "$PY"
+          lipo -archs "$PY"
+
       - name: Install PyInstaller
         run: |
-          python -m pip install --upgrade pip
-          pip install pyinstaller
+          python3 -m pip install --upgrade pip
+          pip3 install pyinstaller
 
       - name: Convert icon.png -> icon.icns
         run: |
@@ -198,13 +199,17 @@ jobs:
           iconutil -c icns icon.iconset -o icon.icns
           ls -la icon.icns
 
-      - name: Build .app bundle with PyInstaller (onedir)
+      - name: Build .app bundle with PyInstaller (universal2)
         run: |
           pyinstaller --noconfirm --windowed --onedir \
             --icon icon.icns \
             --add-data "${{ env.ICON_PNG }}:." \
             --name "Tic-Tac-Toe" main.py
           ls -la dist/Tic-Tac-Toe.app/Contents/MacOS/
+
+      - name: Verify universal2 binary
+        run: |
+          lipo -archs dist/Tic-Tac-Toe.app/Contents/MacOS/Tic-Tac-Toe
 
       - name: Ad-hoc codesign (local run, no notarization)
         run: |
@@ -213,7 +218,7 @@ jobs:
 
       - name: Create .dmg image
         run: |
-          DMG="tic-tac-toe-macos-${{ matrix.arch }}-${{ steps.ver.outputs.version }}.dmg"
+          DMG="tic-tac-toe-macos-${{ steps.ver.outputs.version }}.dmg"
           hdiutil create -volname "Tic-Tac-Toe" -srcfolder "dist/Tic-Tac-Toe.app" \
             -ov -format UDZO "./$DMG"
           ls -la "$DMG"
@@ -221,8 +226,8 @@ jobs:
       - name: Upload macOS DMG Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: macos-${{ matrix.arch }}-artifact
-          path: tic-tac-toe-macos-${{ matrix.arch }}-*.dmg
+          name: macos-artifact
+          path: tic-tac-toe-macos-*.dmg
           if-no-files-found: error
 
   # ====== ПУБЛИКАЦИЯ РЕЛИЗА НА GITHUB ======
@@ -242,15 +247,10 @@ jobs:
         with:
           name: linux-appimage
 
-      - name: Download macOS Artifact (arm64)
+      - name: Download macOS Artifact (universal2)
         uses: actions/download-artifact@v4
         with:
-          name: macos-arm64-artifact
-
-      - name: Download macOS Artifact (x86_64)
-        uses: actions/download-artifact@v4
-        with:
-          name: macos-x86_64-artifact
+          name: macos-artifact
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

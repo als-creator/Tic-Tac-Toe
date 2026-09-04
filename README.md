@@ -54,8 +54,17 @@ docker rmi -f ghcr.io/als-creator/tic-tac-toe:latest
 
 При создании тега (`git tag vX.Y.Z && git push --tags`) GitHub Actions автоматически соберёт и опубликует в разделе **Releases**:
 
-- **Windows** — автономный `.exe` (PyInstaller, `--onefile`): `tic-tac-toe-windows-<версия>.exe`
+- **Windows** — архив `zip` с папкой приложения (PyInstaller, `--onedir`): `tic-tac-toe-windows-<версия>.zip`
 - **Linux** — **AppImage**: `tic-tac-toe-linux-<версия>.AppImage`
+
+Windows (распакуйте архив и запустите `tic-tac-toe.exe`):
+
+```powershell
+Expand-Archive tic-tac-toe-windows-<версия>.zip
+tic-tac-toe-windows-<версия>\tic-tac-toe.exe
+```
+
+> **Windows Defender:** сборка идёт в режиме `--onedir` без UPX-сжатия и с корректными метаданными версии — это убирает ложное срабатывание эвристики `Win32/Sabsik.FL!ml`, которое встречается у свистков `onefile`. Если защитник всё же спросит — разрешите запуск/добавьте в исключения.
 
 AppImage запускается на любом дистрибутиве без установки зависимостей:
 

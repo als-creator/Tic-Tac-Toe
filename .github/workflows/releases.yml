@@ -74,7 +74,7 @@ jobs:
       - name: Install PyInstaller
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller
+          pip install pyinstaller pillow
 
       - name: Compute version from tag
         id: ver
@@ -121,9 +121,11 @@ jobs:
           chmod +x "$APPDIR/AppRun"
           chmod +x "$APPDIR/usr/bin/tic-tac-toe"
 
-          # иконки
-          cp "${{ env.ICON_PNG }}" "$APPDIR/usr/share/icons/hicolor/512x512/apps/tic-tac-toe.png"
-          cp "${{ env.ICON_PNG }}" "$APPDIR/tic-tac-toe.png"
+          # иконки — linuxdeploy принимает только валидные hicolor-размеры,
+          # исходный icon.png 250x250 невалиден -> ресайзим до 512x512
+          python -c "from PIL import Image; im=Image.open('${{ env.ICON_PNG }}'); im=im.resize((512,512), Image.LANCZOS); im.save('icon-512.png'); print('resized to', im.size)"
+          cp icon-512.png "$APPDIR/usr/share/icons/hicolor/512x512/apps/tic-tac-toe.png"
+          cp icon-512.png "$APPDIR/tic-tac-toe.png"
 
           echo "APPDIR=$APPDIR" >> "$GITHUB_ENV"
 
@@ -142,7 +144,7 @@ jobs:
             --desktop-file "$APPDIR/usr/share/applications/tic-tac-toe.desktop" \
             --icon-file "$APPDIR/usr/share/icons/hicolor/512x512/apps/tic-tac-toe.png" \
             --output appimage
-          mv TicTacToe-*-x86_64.AppImage ./tic-tac-toe-linux-${{ steps.ver.outputs.version }}.AppImage
+          mv Tic-Tac-Toe-*-x86_64.AppImage ./tic-tac-toe-linux-${{ steps.ver.outputs.version }}.AppImage
 
       - name: Upload AppImage Artifact
         uses: actions/upload-artifact@v4

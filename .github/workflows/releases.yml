@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'
 
+env:
+  ICON_PNG: icon.png
+  ICON_ICO: icon.ico
+
 jobs:
   # ====== СБОРКА WINDOWS EXE ======
   build-windows:
@@ -18,27 +22,38 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install PyInstaller and Pillow
+      - name: Install PyInstaller
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller pillow
+          pip install pyinstaller
+
+      - name: Compute version from tag
+        id: ver
+        shell: bash
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
 
       - name: Build EXE with PyInstaller
+        shell: bash
         run: |
-          pyinstaller --noconfirm --onefile --windowed --add-data "icon.ico;." --icon "icon.ico" main.py
+          pyinstaller --noconfirm --onefile --windowed \
+            --icon "${{ env.ICON_ICO }}" \
+            --add-data "${{ env.ICON_PNG }};." \
+            --add-data "${{ env.ICON_ICO }};." \
+            --name "tic-tac-toe" main.py
 
       - name: Rename Artifact (Windows-friendly)
         shell: bash
         run: |
-          mv dist/main.exe ./tic-tac-toe-windows.exe
+          mv dist/tic-tac-toe.exe ./tic-tac-toe-windows-${{ steps.ver.outputs.version }}.exe
 
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-artifact
-          path: tic-tac-toe-windows.exe
+          path: tic-tac-toe-windows-*.exe
+          if-no-files-found: error
 
-  # ====== СБОРКА LINUX BINARY ======
+  # ====== СБОРКА LINUX APPIMAGE (PyInstaller + linuxdeploy) ======
   build-linux:
     runs-on: ubuntu-22.04
     steps:
@@ -50,30 +65,91 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install system dependencies
+      - name: Install system dependencies (Tk + AppImage tooling)
         run: |
           sudo apt-get update
-          sudo apt-get install -y python3-tk libx11-6 binutils
+          sudo apt-get install -y python3-tk libx11-6 file fuse3 desktop-file-utils
+          sudo apt-get install -y tk8.6 tcl8.6 libtk8.6 libtcl8.6 || true
 
-      - name: Install PyInstaller and Pillow
+      - name: Install PyInstaller
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller pillow
+          pip install pyinstaller
 
-      - name: Build Binary with PyInstaller
+      - name: Compute version from tag
+        id: ver
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build AppDir files with PyInstaller (onedir)
         run: |
-          pyinstaller --noconfirm --onefile --windowed --add-data "icon.ico:." main.py
+          # onedir нужен, чтобы linuxdeploy увидел ELF-зависимости (libtk/libtcl/X11)
+          pyinstaller --noconfirm --onedir --windowed \
+            --add-data "${{ env.ICON_PNG }}:." \
+            --add-data "${{ env.ICON_ICO }}:." \
+            --name "tic-tac-toe" main.py
 
-      - name: Create Archive
+      - name: Assemble AppDir structure
         run: |
-          mv dist/main ./tic-tac-toe-linux
-          tar -czvf tic-tac-toe-linux.tar.gz tic-tac-toe-linux icon.ico
+          set -e
+          APPDIR="$(mktemp -d)/TicTacToe.AppDir"
+          mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" "$APPDIR/usr/share/icons/hicolor/512x512/apps"
+          cp -a dist/tic-tac-toe/* "$APPDIR/usr/bin/"
 
-      - name: Upload Linux Artifact
+          # desktop-файл
+          { printf '%s\n' \
+              '[Desktop Entry]' \
+              'Type=Application' \
+              'Name=Tic-Tac-Toe' \
+              'Name[ru]=Крестики-нолики' \
+              'Comment=Tic-Tac-Toe game' \
+              'Comment[ru]=Игра «Крестики-нолики»' \
+              'Exec=tic-tac-toe' \
+              'Icon=tic-tac-toe' \
+              'Terminal=false' \
+              'Categories=Game;' \
+              'StartupNotify=true' \
+            > "$APPDIR/usr/share/applications/tic-tac-toe.desktop"; }
+
+          # AppRun -> запускаем настоящий бинарь
+          { printf '%s\n' \
+              '#!/bin/sh' \
+              'SELF="$(readlink -f -- "$0")"' \
+              'HERE="${SELF%/*}"' \
+              'export LD_LIBRARY_PATH="${HERE}/usr/bin${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"' \
+              'exec "${HERE}/usr/bin/tic-tac-toe" "$@"' \
+            > "$APPDIR/AppRun"; }
+          chmod +x "$APPDIR/AppRun"
+          chmod +x "$APPDIR/usr/bin/tic-tac-toe"
+
+          # иконки
+          cp "${{ env.ICON_PNG }}" "$APPDIR/usr/share/icons/hicolor/512x512/apps/tic-tac-toe.png"
+          cp "${{ env.ICON_PNG }}" "$APPDIR/tic-tac-toe.png"
+
+          echo "APPDIR=$APPDIR" >> "$GITHUB_ENV"
+
+      - name: Download linuxdeploy
+        run: |
+          wget -q -O /tmp/linuxdeploy \
+            https://github.com/linuxdeploy/linuxdeploy/releases/download/1.0.0-20250117165418-1df4e00b/linuxdeploy-x86_64.AppImage
+          chmod +x /tmp/linuxdeploy
+
+      - name: Generate AppImage with linuxdeploy
+        run: |
+          export ARCH=x86_64
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          /tmp/linuxdeploy \
+            --appdir "$APPDIR" \
+            --desktop-file "$APPDIR/usr/share/applications/tic-tac-toe.desktop" \
+            --icon-file "$APPDIR/usr/share/icons/hicolor/512x512/apps/tic-tac-toe.png" \
+            --output appimage
+          mv TicTacToe-*-x86_64.AppImage ./tic-tac-toe-linux-${{ steps.ver.outputs.version }}.AppImage
+
+      - name: Upload AppImage Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: linux-artifact
-          path: tic-tac-toe-linux.tar.gz
+          name: linux-appimage
+          path: tic-tac-toe-linux-*.AppImage
+          if-no-files-found: error
 
   # ====== ПУБЛИКАЦИЯ РЕЛИЗА НА GITHUB ======
   publish-release:
@@ -90,13 +166,13 @@ jobs:
       - name: Download Linux Artifact
         uses: actions/download-artifact@v4
         with:
-          name: linux-artifact
+          name: linux-appimage
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2  # ОПЕЧАТКА ИСПРАВЛЕНА (БЫЛО action-gh-releases)
+        uses: softprops/action-gh-release@v2
         with:
           files: |
-            tic-tac-toe-windows.exe
-            tic-tac-toe-linux.tar.gz
+            tic-tac-toe-windows-*.exe
+            tic-tac-toe-linux-*.AppImage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

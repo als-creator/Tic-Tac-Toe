@@ -4,14 +4,14 @@ FROM python:3.12-slim
 RUN apt-get update && apt-get install -y \
     python3-tk \
     libx11-6 \
-    && rm -rf /var/list/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
 # Создаем рабочую папку в контейнере
 WORKDIR /app
 
-# Копируем файлы проекта (теперь копируем icon.ico вместо icon.png)
+# Копируем файлы проекта (иконка окна — PNG; PhotoImage не читает ICO)
 COPY main.py .
-COPY icon.ico .
+COPY icon.png .
 
 # Команда для запуска приложения внутри контейнера
 CMD ["python", "main.py"]

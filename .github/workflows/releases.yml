@@ -22,35 +22,66 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install PyInstaller
-        run: |
-          python -m pip install --upgrade pip
-          pip install pyinstaller
-
       - name: Compute version from tag
         id: ver
         shell: bash
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
 
-      - name: Build EXE with PyInstaller
+      - name: Install PyInstaller
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+
+      - name: Generate version-file with real metadata
+        shell: python
+        run: |
+          import os, pathlib, subprocess
+          tag = os.environ["GITHUB_REF"].replace("refs/tags/v", "")
+          parts = tag.split(".")
+          while len(parts) < 4:
+              parts.append("0")
+          parts = " ".join(parts)
+          txt = f"""VSVersionInfo(
+            ffi=FixedFileInfo(
+              filevers=({parts}),
+              prodvers=({parts}),
+              mask=0x3f, flags=0x0, OS=0x40004, fileType=0x1, subtype=0x0,
+              date=(0, 0)
+            ),
+            kids=[StringFileInfo([StringTable('040904B0', [
+              StringStruct('CompanyName', 'Tic-Tac-Toe'),
+              StringStruct('FileDescription', 'KRESTIKI-NOLIKI game (Python/Tk)'),
+              StringStruct('FileVersion', '{tag}'),
+              StringStruct('ProductName', 'Tic-Tac-Toe'),
+              StringStruct('ProductVersion', '{tag}')
+            ])]), VarFileInfo([VarStruct('Translation', [1033, 1200])])]
+          )
+          """
+          pathlib.Path("version_info.txt").write_text(txt, encoding="utf-8")
+          print("version_info.txt written for", tag)
+
+      - name: Build Windows directory with PyInstaller (onedir + noupx)
         shell: bash
         run: |
-          pyinstaller --noconfirm --onefile --windowed \
+          pyinstaller --noconfirm --onedir --windowed --noupx \
             --icon "${{ env.ICON_ICO }}" \
             --add-data "${{ env.ICON_PNG }};." \
             --add-data "${{ env.ICON_ICO }};." \
+            --version-file version_info.txt \
             --name "tic-tac-toe" main.py
 
-      - name: Rename Artifact (Windows-friendly)
+      - name: Package as ZIP archive
         shell: bash
         run: |
-          mv dist/tic-tac-toe.exe ./tic-tac-toe-windows-${{ steps.ver.outputs.version }}.exe
+          cd dist
+          python -m zipfile -c "tic-tac-toe-windows-${{ steps.ver.outputs.version }}.zip" tic-tac-toe
+          mv "tic-tac-toe-windows-${{ steps.ver.outputs.version }}.zip" ..
 
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-artifact
-          path: tic-tac-toe-windows-*.exe
+          path: tic-tac-toe-windows-*.zip
           if-no-files-found: error
 
   # ====== СБОРКА LINUX APPIMAGE (PyInstaller + linuxdeploy) ======
@@ -144,7 +175,7 @@ jobs:
             --desktop-file "$APPDIR/usr/share/applications/tic-tac-toe.desktop" \
             --icon-file "$APPDIR/usr/share/icons/hicolor/512x512/apps/tic-tac-toe.png" \
             --output appimage
-          mv Tic-Tac-Toe-*-x86_64.AppImage ./tic-tac-toe-linux-${{ steps.ver.outputs.version }}.AppImage
+          mv Tic-Tac-Toe-x86_64.AppImage ./tic-tac-toe-linux-${{ steps.ver.outputs.version }}.AppImage
 
       - name: Upload AppImage Artifact
         uses: actions/upload-artifact@v4
@@ -174,7 +205,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            tic-tac-toe-windows-*.exe
+            tic-tac-toe-windows-*.zip
             tic-tac-toe-linux-*.AppImage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
